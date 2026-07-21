@@ -364,9 +364,7 @@ def write_tokenizer(save_dir: str, push_to_hub: bool = False, path: str | None =
             "context_image_token": "<IMG_CONTEXT>",
         }
         vocab = AutoTokenizer.from_pretrained(path, trust_remote_code=True).get_vocab()
-        extra_special_tokens = {
-            name: token for name, token in vocab_backed_special_tokens.items() if token in vocab
-        }
+        extra_special_tokens = {name: token for name, token in vocab_backed_special_tokens.items() if token in vocab}
         extra_special_tokens["video_token"] = "<video>"
         tokenizer = AutoTokenizer.from_pretrained(
             path,
