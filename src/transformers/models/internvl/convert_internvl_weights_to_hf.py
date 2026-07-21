@@ -199,12 +199,16 @@ def get_internvl_config(input_base_path):
     llm_config = base_config.llm_config.to_dict()
     vision_config = base_config.vision_config.to_dict()
     vision_config["use_absolute_position_embeddings"] = True
-    if get_lm_type(input_base_path) == "qwen2":
+    language_config_class = Qwen2Config if get_lm_type(input_base_path) == "qwen2" else LlamaConfig
+    if input_base_path not in LM_TYPE_CORRESPONDENCE:
+        # Older checkpoints ship their own tokenizer with their own vocab layout, so the image token id
+        # must be looked up rather than assumed from the Qwen2.5/InternLM2 templates used below.
+        tokenizer = AutoTokenizer.from_pretrained(input_base_path, trust_remote_code=True)
+        image_token_id = tokenizer.convert_tokens_to_ids("<IMG_CONTEXT>")
+    elif get_lm_type(input_base_path) == "qwen2":
         image_token_id = 151667
-        language_config_class = Qwen2Config
     else:
         image_token_id = 92546
-        language_config_class = LlamaConfig
 
     llm_config = {k: v for k, v in llm_config.items() if k not in UNNECESSARY_CONFIG_KEYS}
     # Force use_cache to True
@@ -345,7 +349,32 @@ def write_model(
 
 
 def write_tokenizer(save_dir: str, push_to_hub: bool = False, path: str | None = None, hub_dir: str | None = None):
-    if get_lm_type(path) == "qwen2":
+    if path not in LM_TYPE_CORRESPONDENCE:
+        # Older checkpoints (e.g. InternVL2) ship their own tokenizer. Reuse it as-is instead of rebuilding
+        # it from a Qwen2.5 template, which can assign special-token ids beyond the checkpoint's actual
+        # vocab size and crash on any image input.
+        # The image tokens (<img>, </img>, <IMG_CONTEXT>) must be real in-vocab tokens because the
+        # processor reads their token ids. video_token is only used as a bare string attribute (InternVL2
+        # has no native video support and never runs video inference), so it is kept even though <video>
+        # is not in the checkpoint's vocab. Rebuilding from a Qwen2.5 template instead would assign
+        # special-token ids beyond the checkpoint's vocab size and crash on any image input.
+        vocab_backed_special_tokens = {
+            "start_image_token": "<img>",
+            "end_image_token": "</img>",
+            "context_image_token": "<IMG_CONTEXT>",
+        }
+        vocab = AutoTokenizer.from_pretrained(path, trust_remote_code=True).get_vocab()
+        extra_special_tokens = {
+            name: token for name, token in vocab_backed_special_tokens.items() if token in vocab
+        }
+        extra_special_tokens["video_token"] = "<video>"
+        tokenizer = AutoTokenizer.from_pretrained(
+            path,
+            trust_remote_code=True,
+            return_token_type_ids=False,
+            extra_special_tokens=extra_special_tokens,
+        )
+    elif get_lm_type(path) == "qwen2":
         tokenizer = AutoTokenizer.from_pretrained(
             "Qwen/Qwen2.5-VL-7B-Instruct",
             return_token_type_ids=False,
