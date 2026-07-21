@@ -20,6 +20,7 @@ import torch
 from einops import rearrange
 
 from transformers import (
+    AutoConfig,
     AutoModel,
     AutoTokenizer,
     GenerationConfig,
@@ -128,7 +129,7 @@ def get_lm_type(path: str) -> Literal["qwen2", "llama"]:
     Determine the type of language model (either 'qwen2' or 'llama') based on a given model path.
     """
     if path not in LM_TYPE_CORRESPONDENCE:
-        base_config = AutoModel.from_pretrained(path, trust_remote_code=True).config
+        base_config = AutoConfig.from_pretrained(path, trust_remote_code=True)
 
         lm_arch = base_config.llm_config.architectures[0]
 
@@ -163,7 +164,7 @@ def convert_old_keys_to_new_keys(state_dict_keys: dict | None = None, path: str 
         if get_lm_type(path) == "llama":
             for pattern, replacement in ORIGINAL_TO_CONVERTED_KEY_MAPPING_TEXT_LLAMA.items():
                 new_text = re.sub(pattern, replacement, new_text)
-        elif LM_TYPE_CORRESPONDENCE[path] == "qwen2":
+        elif get_lm_type(path) == "qwen2":
             for pattern, replacement in ORIGINAL_TO_CONVERTED_KEY_MAPPING_TEXT_QWEN2.items():
                 new_text = re.sub(pattern, replacement, new_text)
         output_dict.update(dict(zip(old_text_language.split("\n"), new_text.split("\n"))))
@@ -194,7 +195,7 @@ def load_original_state_dict(input_base_path):
 
 
 def get_internvl_config(input_base_path):
-    base_config = AutoModel.from_pretrained(input_base_path, trust_remote_code=True).config
+    base_config = AutoConfig.from_pretrained(input_base_path, trust_remote_code=True)
     llm_config = base_config.llm_config.to_dict()
     vision_config = base_config.vision_config.to_dict()
     vision_config["use_absolute_position_embeddings"] = True
@@ -370,7 +371,6 @@ def write_tokenizer(save_dir: str, push_to_hub: bool = False, path: str | None =
                     "</box>",
                 ]
             },
-            replace_additional_special_tokens=False,
         )
     else:
         # Obtained with:
