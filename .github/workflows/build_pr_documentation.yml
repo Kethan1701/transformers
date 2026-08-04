@@ -14,7 +14,7 @@ permissions:
 jobs:
   build:
     if: github.event_name == 'pull_request'
-    uses: huggingface/doc-builder/.github/workflows/build_pr_documentation.yml@6108e850ae1cf2f71bb0815a600bcd50c39abfa7  # main (light installs, no custom container)
+    uses: huggingface/doc-builder/.github/workflows/build_pr_documentation.yml@7ccf6c02dc2e3aea1b07f6668f783b20c3bf407c  # main (light installs, no custom container)
     with:
       commit_sha: ${{ github.event.pull_request.head.sha }}
       pr_number: ${{ github.event.number }}
