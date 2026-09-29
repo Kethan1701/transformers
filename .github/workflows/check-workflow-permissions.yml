@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   advisor:
-    uses: huggingface/security-workflows/.github/workflows/permissions-advisor-reusable.yml@3142e083165566de9c849dfb27973ebf676da4aa  # main
+    uses: huggingface/security-workflows/.github/workflows/permissions-advisor-reusable.yml@f3e47f47f587e6a13cc8ffc458149790bfc3591f  # main
     permissions:
       actions: read
       contents: read
